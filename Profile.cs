@@ -40,7 +40,7 @@ public class Profile
     }
 
     private string _groupImportInput;
-    private Task<(string text, bool edited)> _groupImportObject;
+    private ValueTask<(string text, bool edited)> _groupImportObject = ValueTask.FromResult<(string text, bool edited)>((string.Empty, false));
 
     private void DrawGroupImport()
     {
@@ -54,19 +54,19 @@ public class Profile
                     ImGui.Text("Checking...");
                 }
 
-                if (_groupImportObject is { IsFaulted: true })
+                if (_groupImportObject.IsFaulted)
                 {
-                    ImGui.Text($"Check failed: {string.Join("\n", _groupImportObject.Exception.InnerExceptions)}");
+                    ImGui.Text($"Check failed: {_groupImportObject.AsTask().Exception}");
                 }
 
                 if (ImGui.InputText("Exported code", ref _groupImportInput, 20000))
                 {
-                    _groupImportObject = Task.Run(() =>
+                    _groupImportObject = new ValueTask<(string text, bool edited)>(Task.Run(() =>
                     {
                         var data = DataExporter.ImportDataBase64(_groupImportInput, "reagent_group_v1");
                         data.ToObject<Profile>();
                         return (data.ToString(), false);
-                    });
+                    }));
                 }
 
                 if (_groupImportObject is { IsCompletedSuccessfully: true })
@@ -80,7 +80,7 @@ public class Profile
                     if (ImGui.InputTextMultiline("Json", ref text, 20000,
                             new Vector2(ImGui.GetContentRegionAvail().X, Math.Max(ImGui.GetContentRegionAvail().Y - 50, 50))))
                     {
-                        _groupImportObject = Task.FromResult((text, true));
+                        _groupImportObject = new ValueTask<(string text, bool edited)>((text, true));
                     }
                 }
 
@@ -98,7 +98,7 @@ public class Profile
             if (!windowVisible)
             {
                 _groupImportInput = null;
-                _groupImportObject = null;
+                _groupImportObject = ValueTask.FromResult<(string text, bool edited)>((string.Empty, false));
             }
         }
     }
@@ -198,7 +198,7 @@ public class Profile
             if (ImGui.Button("Import group"))
             {
                 _groupImportInput = "";
-                _groupImportObject = null;
+                _groupImportObject = ValueTask.FromResult<(string text, bool edited)>((string.Empty, false));
             }
 
             if (popupRequested)
@@ -249,7 +249,7 @@ public class Profile
     public void FocusLost()
     {
         _groupImportInput = null;
-        _groupImportObject = null;
+        _groupImportObject = ValueTask.FromResult<(string text, bool edited)>((string.Empty, false));
     }
 
     private void DrawSettingsHorizontal(RuleState state, ReAgentSettings settings)
@@ -264,7 +264,7 @@ public class Profile
             if (ImGui.TabItemButton("Import", ImGuiTabItemFlags.Trailing))
             {
                 _groupImportInput = "";
-                _groupImportObject = null;
+                _groupImportObject = ValueTask.FromResult<(string text, bool edited)>((string.Empty, false));
             }
 
             for (var i = 0; i < Groups.Count; i++)

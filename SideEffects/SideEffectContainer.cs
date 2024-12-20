@@ -5,6 +5,8 @@ namespace ReAgent.SideEffects;
 
 public record SideEffectContainer(ISideEffect SideEffect, RuleGroup Group, Rule Rule)
 {
+    private static readonly Stopwatch StopwatchInstance = new Stopwatch();
+
     public void SetPending()
     {
         Rule.PendingEffectCount++;
@@ -16,7 +18,8 @@ public record SideEffectContainer(ISideEffect SideEffect, RuleGroup Group, Rule 
         {
             if (--Rule.PendingEffectCount == 0)
             {
-                state.InternalState.CurrentGroupState.ConditionActivations[Rule] = Stopwatch.StartNew();
+                state.InternalState.CurrentGroupState.ConditionActivations[Rule] = StopwatchInstance;
+                StopwatchInstance.Restart();
             }
         }
     }
