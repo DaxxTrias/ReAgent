@@ -40,7 +40,7 @@ public class Profile
     }
 
     private string _groupImportInput;
-    private Task<(string text, bool edited)> _groupImportObject;
+    private ValueTask<(string text, bool edited)> _groupImportObject;
 
     private void DrawGroupImport()
     {
@@ -61,12 +61,12 @@ public class Profile
 
                 if (ImGui.InputText("Exported code", ref _groupImportInput, 20000))
                 {
-                    _groupImportObject = Task.Run(() =>
+                    _groupImportObject = new ValueTask<(string text, bool edited)>(Task.Run(() =>
                     {
                         var data = DataExporter.ImportDataBase64(_groupImportInput, "reagent_group_v1");
                         data.ToObject<Profile>();
                         return (data.ToString(), false);
-                    });
+                    }));
                 }
 
                 if (_groupImportObject is { IsCompletedSuccessfully: true })
@@ -80,7 +80,7 @@ public class Profile
                     if (ImGui.InputTextMultiline("Json", ref text, 20000,
                             new Vector2(ImGui.GetContentRegionAvail().X, Math.Max(ImGui.GetContentRegionAvail().Y - 50, 50))))
                     {
-                        _groupImportObject = Task.FromResult((text, true));
+                        _groupImportObject = new ValueTask<(string text, bool edited)>((text, true));
                     }
                 }
 

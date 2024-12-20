@@ -58,7 +58,7 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
     }
 
     private string _profileImportInput = null;
-    private Task<(string text, bool edited)> _profileImportObject = null;
+    private ValueTask<(string text, bool edited)> _profileImportObject = null;
 
     private void DrawProfileImport()
     {
@@ -79,12 +79,12 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
 
                 if (ImGui.InputText("Exported code", ref _profileImportInput, 20000))
                 {
-                    _profileImportObject = Task.Run(() =>
+                    _profileImportObject = new ValueTask<(string text, bool edited)>(Task.Run(() =>
                     {
                         var data = DataExporter.ImportDataBase64(_profileImportInput, "reagent_profile_v1");
                         data.ToObject<Profile>();
                         return (data.ToString(), false);
-                    });
+                    }));
                 }
 
                 if (_profileImportObject is { IsCompletedSuccessfully: true })
@@ -98,7 +98,7 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
                     if (ImGui.InputTextMultiline("Json", ref text, 20000,
                             new Vector2(ImGui.GetContentRegionAvail().X, Math.Max(ImGui.GetContentRegionAvail().Y - 50, 50)), ImGuiInputTextFlags.ReadOnly))
                     {
-                        _profileImportObject = Task.FromResult((text, true));
+                        _profileImportObject = new ValueTask<(string text, bool edited)>((text, true));
                     }
                 }
 

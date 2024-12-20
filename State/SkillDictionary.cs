@@ -22,7 +22,7 @@ public class SkillDictionary
     public SkillDictionary(GameController controller, Entity entity, bool isActiveSkillSet)
     {
         _controller = controller;
-        _actor = new Lazy<Actor>(() => entity?.GetComponent<Actor>(), LazyThreadSafetyMode.None);
+        _actor = new Lazy<Actor>(() => entity?.GetComponent<Actor>(), LazyThreadSafetyMode.ExecutionAndPublication);
 
         _poolInfo = new Lazy<PoolInfo>(() =>
         {
@@ -36,7 +36,7 @@ public class SkillDictionary
             var currentHpPool = lifeComponent.CurHP;
             var currentEsPool = lifeComponent.CurES;
             return new PoolInfo(currentManaPool, currentHpPool, currentEsPool);
-        }, LazyThreadSafetyMode.None);
+        }, LazyThreadSafetyMode.ExecutionAndPublication);
 
         _source = new Lazy<Dictionary<string, SkillInfo>>(() =>
         {
@@ -55,7 +55,7 @@ public class SkillDictionary
                 .DistinctBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(x => CreateSkillInfo(x, controller, poolInfo.ManaPool, poolInfo.HpPoll, poolInfo.EsPool))
                 .ToDictionary(x => x.Name, StringComparer.OrdinalIgnoreCase);
-        }, LazyThreadSafetyMode.None);
+        }, LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
     private static SkillInfo CreateSkillInfo(ActorSkill skill, GameController controller, int currentManaPool, int currentHpPool, int currentEsPool)
@@ -83,7 +83,7 @@ public class SkillDictionary
                     .Where(e => e != null)
                     .Select(e => new MonsterInfo(controller, e))
                     .ToList(),
-                LazyThreadSafetyMode.None));
+                LazyThreadSafetyMode.ExecutionAndPublication));
     }
 
     [Api]
