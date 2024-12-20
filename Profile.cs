@@ -40,7 +40,7 @@ public class Profile
     }
 
     private string _groupImportInput;
-    private ValueTask<(string text, bool edited)> _groupImportObject = ValueTask.FromResult<(string text, bool edited)>((null, false));
+    private ValueTask<(string text, bool edited)> _groupImportObject = ValueTask.FromResult<(string text, bool edited)>((string.Empty, false));
 
     private void DrawGroupImport()
     {
@@ -98,7 +98,7 @@ public class Profile
             if (!windowVisible)
             {
                 _groupImportInput = null;
-                _groupImportObject = null;
+                _groupImportObject = ValueTask.FromResult<(string text, bool edited)>((string.Empty, false));
             }
         }
     }
@@ -198,7 +198,7 @@ public class Profile
             if (ImGui.Button("Import group"))
             {
                 _groupImportInput = "";
-                _groupImportObject = null;
+                _groupImportObject = ValueTask.FromResult<(string text, bool edited)>((string.Empty, false));
             }
 
             if (popupRequested)
@@ -249,7 +249,7 @@ public class Profile
     public void FocusLost()
     {
         _groupImportInput = null;
-        _groupImportObject = null;
+        _groupImportObject = ValueTask.FromResult<(string text, bool edited)>((string.Empty, false));
     }
 
     private void DrawSettingsHorizontal(RuleState state, ReAgentSettings settings)
@@ -264,7 +264,7 @@ public class Profile
             if (ImGui.TabItemButton("Import", ImGuiTabItemFlags.Trailing))
             {
                 _groupImportInput = "";
-                _groupImportObject = null;
+                _groupImportObject = ValueTask.FromResult<(string text, bool edited)>((string.Empty, false));
             }
 
             for (var i = 0; i < Groups.Count; i++)

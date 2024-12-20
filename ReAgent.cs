@@ -58,7 +58,7 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
     }
 
     private string _profileImportInput = null;
-    private ValueTask<(string text, bool edited)> _profileImportObject = null;
+    private ValueTask<(string text, bool edited)> _profileImportObject = ValueTask.FromResult<(string text, bool edited)>((string.Empty, false));
 
     private void DrawProfileImport()
     {
@@ -117,7 +117,7 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
             if (!windowVisible)
             {
                 _profileImportInput = null;
-                _profileImportObject = null;
+                _profileImportObject = ValueTask.FromResult<(string text, bool edited)>((string.Empty, false));
             }
         }
     }
@@ -147,7 +147,7 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
             if (ImGui.TabItemButton("Import profile##import", ImGuiTabItemFlags.Trailing))
             {
                 _profileImportInput = "";
-                _profileImportObject = null;
+                _profileImportObject = ValueTask.FromResult<(string text, bool edited)>((string.Empty, false));
             }
 
             foreach (var (profileName, profile) in Settings.Profiles.OrderByDescending(x => x.Key == Settings.CurrentProfile).ThenBy(x => x.Key).ToList())
