@@ -40,7 +40,7 @@ public class Profile
     }
 
     private string _groupImportInput;
-    private ValueTask<(string text, bool edited)> _groupImportObject;
+    private ValueTask<(string text, bool edited)> _groupImportObject = ValueTask.FromResult<(string text, bool edited)>((null, false));
 
     private void DrawGroupImport()
     {
