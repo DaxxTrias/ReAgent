@@ -1,13 +1,18 @@
 ﻿using System.Linq.Dynamic.Core.CustomTypeProviders;
 using System.Windows.Forms;
 using ReAgent.State;
+using static ExileCore2.Shared.Nodes.HotkeyNodeV2;
 
 namespace ReAgent.SideEffects;
 
 [DynamicLinqType]
 [Api]
-public record PressKeySideEffect(Keys Key) : ISideEffect
+public record PressKeySideEffect(HotkeyNodeValue Key) : ISideEffect
 {
+    public PressKeySideEffect(Keys key) : this(new HotkeyNodeValue(key))
+    {
+    }
+
     public SideEffectApplicationResult Apply(RuleState state)
     {
         if (!state.InternalState.CanPressKey)
@@ -34,8 +39,12 @@ public record PressKeySideEffect(Keys Key) : ISideEffect
 
 [DynamicLinqType]
 [Api]
-public record StartKeyHoldSideEffect(Keys Key) : ISideEffect
+public record StartKeyHoldSideEffect(HotkeyNodeValue Key) : ISideEffect
 {
+    public StartKeyHoldSideEffect(Keys key) : this(new HotkeyNodeValue(key))
+    {
+    }
+
     public SideEffectApplicationResult Apply(RuleState state)
     {
         if (state.InternalState.KeysToHoldDown.Contains(Key))
@@ -52,8 +61,12 @@ public record StartKeyHoldSideEffect(Keys Key) : ISideEffect
 
 [DynamicLinqType]
 [Api]
-public record ReleaseKeyHoldSideEffect(Keys Key) : ISideEffect
+public record ReleaseKeyHoldSideEffect(HotkeyNodeValue Key) : ISideEffect
 {
+    public ReleaseKeyHoldSideEffect(Keys key) : this(new HotkeyNodeValue(key))
+    {
+    }
+
     public SideEffectApplicationResult Apply(RuleState state)
     {
         if (state.InternalState.KeysToRelease.Contains(Key))
