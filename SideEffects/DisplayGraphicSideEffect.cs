@@ -6,6 +6,7 @@ namespace ReAgent.SideEffects;
 
 [DynamicLinqType]
 [Api]
+[method: Api]
 public record DisplayGraphicSideEffect(string GraphicFilePath, Vector2 Position, Vector2 Size, string ColorTint) : ISideEffect
 {
     public SideEffectApplicationResult Apply(RuleState state)

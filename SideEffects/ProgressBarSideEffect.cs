@@ -6,6 +6,7 @@ namespace ReAgent.SideEffects;
 
 [DynamicLinqType]
 [Api]
+[method: Api]
 public record ProgressBarSideEffect(string Text, Vector2 Position, Vector2 Size, float Fraction, string Color, string BackgroundColor, string TextColor) : ISideEffect
 {
     public SideEffectApplicationResult Apply(RuleState state)
