@@ -43,6 +43,7 @@ public record PressKeySideEffect(HotkeyNodeValue Key) : ISideEffect
 [method: Api]
 public record StartKeyHoldSideEffect(HotkeyNodeValue Key) : ISideEffect
 {
+    [method: Api]
     public StartKeyHoldSideEffect(Keys key) : this(new HotkeyNodeValue(key))
     {
     }
@@ -66,6 +67,7 @@ public record StartKeyHoldSideEffect(HotkeyNodeValue Key) : ISideEffect
 [method: Api]
 public record ReleaseKeyHoldSideEffect(HotkeyNodeValue Key) : ISideEffect
 {
+    [method: Api]
     public ReleaseKeyHoldSideEffect(Keys key) : this(new HotkeyNodeValue(key))
     {
     }
