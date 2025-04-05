@@ -6,6 +6,7 @@ namespace ReAgent.SideEffects;
 
 [DynamicLinqType]
 [Api]
+[method: Api]
 public record DisplayTextSideEffect(string Text, Vector2 Position, string Color) : ISideEffect
 {
     public SideEffectApplicationResult Apply(RuleState state)

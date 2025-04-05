@@ -9,6 +9,7 @@ namespace ReAgent.SideEffects;
 
 [DynamicLinqType]
 [Api]
+[method: Api]
 public record DisconnectSideEffect : ISideEffect
 {
     public SideEffectApplicationResult Apply(RuleState state)

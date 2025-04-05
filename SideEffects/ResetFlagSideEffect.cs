@@ -5,6 +5,7 @@ namespace ReAgent.SideEffects;
 
 [DynamicLinqType]
 [Api]
+[method: Api]
 public record ResetFlagSideEffect(string Id) : ISideEffect
 {
     public SideEffectApplicationResult Apply(RuleState state)

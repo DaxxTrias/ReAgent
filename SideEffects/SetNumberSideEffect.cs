@@ -6,6 +6,7 @@ namespace ReAgent.SideEffects;
 
 [DynamicLinqType]
 [Api]
+[method: Api]
 public record SetNumberSideEffect(string Id, float Value) : ISideEffect
 {
     public SideEffectApplicationResult Apply(RuleState state)

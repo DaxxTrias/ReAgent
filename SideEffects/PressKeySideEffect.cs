@@ -7,6 +7,7 @@ namespace ReAgent.SideEffects;
 
 [DynamicLinqType]
 [Api]
+[method: Api]
 public record PressKeySideEffect(HotkeyNodeValue Key) : ISideEffect
 {
     public PressKeySideEffect(Keys key) : this(new HotkeyNodeValue(key))
@@ -39,8 +40,10 @@ public record PressKeySideEffect(HotkeyNodeValue Key) : ISideEffect
 
 [DynamicLinqType]
 [Api]
+[method: Api]
 public record StartKeyHoldSideEffect(HotkeyNodeValue Key) : ISideEffect
 {
+    [method: Api]
     public StartKeyHoldSideEffect(Keys key) : this(new HotkeyNodeValue(key))
     {
     }
@@ -61,8 +64,10 @@ public record StartKeyHoldSideEffect(HotkeyNodeValue Key) : ISideEffect
 
 [DynamicLinqType]
 [Api]
+[method: Api]
 public record ReleaseKeyHoldSideEffect(HotkeyNodeValue Key) : ISideEffect
 {
+    [method: Api]
     public ReleaseKeyHoldSideEffect(Keys key) : this(new HotkeyNodeValue(key))
     {
     }
