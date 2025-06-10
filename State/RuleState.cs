@@ -24,6 +24,7 @@ public class RuleState
     private readonly Lazy<List<MonsterInfo>> _hiddenMonsters;
     private readonly Lazy<List<MonsterInfo>> _allPlayers;
     private readonly Lazy<List<MonsterInfo>> _corpses;
+    private readonly Lazy<List<MonsterInfo>> _portals;
 
     public RuleInternalState InternalState
     {
@@ -101,6 +102,8 @@ public class RuleState
             _effects = new Lazy<List<EntityInfo>>(() => controller.EntityListWrapper.ValidEntitiesByType[EntityType.Effect].Select(x => new EntityInfo(controller, x)).ToList(), LazyThreadSafetyMode.None);
             _allPlayers = new Lazy<List<MonsterInfo>>(() => controller.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
                     .Select(x => new MonsterInfo(controller, x)).ToList(), LazyThreadSafetyMode.None);
+            _portals = new Lazy<List<MonsterInfo>>(() => controller.EntityListWrapper.ValidEntitiesByType[EntityType.TownPortal]
+                .Select(x => new MonsterInfo(controller, x)).ToList(), LazyThreadSafetyMode.None);
         }
     }
 
@@ -203,6 +206,9 @@ public class RuleState
 
     [Api]
     public MonsterInfo PlayerByName(string name) => _allPlayers.Value.FirstOrDefault(p => p.PlayerName.Equals(name));
+    
+    [Api]
+    public IEnumerable<MonsterInfo> Portals => _portals.Value;
 
     [Api]
     public IEnumerable<EntityInfo> Effects => _effects.Value;
