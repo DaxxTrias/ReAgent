@@ -28,6 +28,9 @@ public class EntityInfo
     }
 
     [Api]
+    public uint Id => Entity.Id;
+
+    [Api]
     public string Path => Entity.Path;
 
     [Api]
@@ -42,6 +45,9 @@ public class EntityInfo
 
     [Api]
     public Vector3 Position => Entity.Pos;
+
+    [Api]
+    public Vector2 GridPosition => Entity.GridPos;
 
     [Api]
     public Vector2 Position2D => Position switch { var p => new Vector2(p.X, p.Y) };
