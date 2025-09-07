@@ -322,7 +322,17 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
         _internalState.KeysToRelease.Clear();
         _internalState.TextToDisplay.Clear();
         _internalState.GraphicToDisplay.Clear();
-        _internalState.PluginBridgeMethodsToCall.Clear();
+        // Clear plugin-bridge queue if present (compat layer via reflection)
+        try
+        {
+            var bridgeProp = typeof(RuleInternalState).GetProperty("PluginBridgeMethodsToCall");
+            var queueObj = bridgeProp?.GetValue(_internalState);
+            queueObj?.GetType().GetMethod("Clear")?.Invoke(queueObj, null);
+        }
+        catch
+        {
+            // ignore
+        }
         _internalState.ProgressBarsToDisplay.Clear();
         _internalState.ChatTitlePanelVisible = GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible;
         _internalState.CanPressKey = _sinceLastKeyPress.ElapsedMilliseconds >= Settings.GlobalKeyPressCooldown && !_internalState.ChatTitlePanelVisible;
@@ -356,23 +366,39 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
 
         ApplyPendingSideEffects();
 
-        foreach (var (methodName, invoker) in _internalState.PluginBridgeMethodsToCall)
+        try
         {
-            try
+            var bridgeProp = typeof(RuleInternalState).GetProperty("PluginBridgeMethodsToCall");
+            if (bridgeProp?.GetValue(_internalState) is System.Collections.IEnumerable queue)
             {
-                if (GameController.PluginBridge.GetMethod<Delegate>(methodName) is { } method)
+                foreach (var entry in queue)
                 {
-                    invoker(method);
-                }
-                else
-                {
-                    LogError($"Plugin bridge method {methodName} was not found");
+                    var t = entry?.GetType();
+                    var methodName = t?.GetField("Item1")?.GetValue(entry) as string;
+                    var invoker = t?.GetField("Item2")?.GetValue(entry) as Action<Delegate>;
+                    if (string.IsNullOrEmpty(methodName) || invoker == null)
+                        continue;
+                    try
+                    {
+                        if (GameController.PluginBridge.GetMethod<Delegate>(methodName) is { } method)
+                        {
+                            invoker(method);
+                        }
+                        else
+                        {
+                            LogError($"Plugin bridge method {methodName} was not found");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError($"Plugin bridge {methodName} call error: {ex}");
+                    }
                 }
             }
-            catch (Exception ex)
-            {
-                LogError($"Plugin bridge {methodName} call error: {ex}");
-            }
+        }
+        catch (Exception ex)
+        {
+            LogError($"Plugin bridge reflection error: {ex}");
         }
 
         if (_internalState.KeyToPress is { } key)

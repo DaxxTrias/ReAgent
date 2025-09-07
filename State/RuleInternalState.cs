@@ -42,6 +42,17 @@ public class RuleInternalState
         return new RuleGroupRegistration(this, group);
     }
 
+    // Safe helpers to avoid direct field usage from other compilation contexts
+    public IEnumerable<(string MethodName, Action<Delegate> Invoker)> GetPluginBridgeMethodsToCall()
+    {
+        return PluginBridgeMethodsToCall;
+    }
+
+    public void ClearPluginBridgeMethodsQueue()
+    {
+        PluginBridgeMethodsToCall.Clear();
+    }
+
     private class RuleGroupRegistration : IDisposable
     {
         public RuleGroupRegistration(RuleInternalState state, RuleGroup group)
