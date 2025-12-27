@@ -88,6 +88,9 @@ public class Rule
     private static readonly PortableExecutableReference metadataReference;
 
     [JsonIgnore]
+    private HotkeyNodeV2 _hotkeyNode;
+
+    [JsonIgnore]
     public int PendingEffectCount { get; set; }
 
     public Rule(string ruleSource, int? syntaxVersion)
@@ -128,10 +131,15 @@ public class Rule
             var key = KeyV2;
             if (expand)
             {
-                var hotkeyNode = new HotkeyNodeV2(key) { AllowControllerKeys = true };
-                if (hotkeyNode.DrawPickerButton($"Key {key}"))
+                // Initialize or update the persistent hotkey node
+                if (_hotkeyNode == null || _hotkeyNode.Value != key)
                 {
-                    KeyV2 = hotkeyNode.Value;
+                    _hotkeyNode = new HotkeyNodeV2(key) { AllowControllerKeys = true };
+                }
+                
+                if (_hotkeyNode.DrawPickerButton($"Key {key}"))
+                {
+                    KeyV2 = _hotkeyNode.Value;
                 }
             }
             else
