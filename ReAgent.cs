@@ -16,6 +16,7 @@ using Newtonsoft.Json;
 using ReAgent.SideEffects;
 using ReAgent.State;
 using RectangleF = ExileCore2.Shared.RectangleF;
+using static ExileCore2.Shared.Nodes.HotkeyNodeV2;
 
 namespace ReAgent;
 
@@ -404,7 +405,74 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
         if (_internalState.KeyToPress is { } key)
         {
             _internalState.KeyToPress = null;
-            InputHelper.SendInputPress(key);
+            DebugWindow.LogMsg($"ReAgent: Pressing key {key} (Key={key.Key})");
+            
+            // Parse the key string to extract modifiers (e.g., "Q, Control" -> Q with Ctrl modifier)
+            var keyStr = key.Key.ToString();
+            var keyParts = keyStr.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            
+            Keys mainKey = Keys.None;
+            bool hasControl = false;
+            bool hasShift = false;
+            bool hasAlt = false;
+            
+            foreach (string part in keyParts)
+            {
+                if (part.Equals("Control", StringComparison.OrdinalIgnoreCase) || 
+                    part.Equals("ControlKey", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasControl = true;
+                }
+                else if (part.Equals("Shift", StringComparison.OrdinalIgnoreCase) || 
+                         part.Equals("ShiftKey", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasShift = true;
+                }
+                else if (part.Equals("Alt", StringComparison.OrdinalIgnoreCase) || 
+                         part.Equals("Menu", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasAlt = true;
+                }
+                else if (Enum.TryParse<Keys>(part, out var parsedKey))
+                {
+                    mainKey = parsedKey;
+                }
+            }
+            
+            // Press modifiers down first
+            if (hasControl)
+            {
+                Input.KeyDown(Keys.LControlKey);
+            }
+            if (hasShift)
+            {
+                Input.KeyDown(Keys.LShiftKey);
+            }
+            if (hasAlt)
+            {
+                Input.KeyDown(Keys.LMenu);
+            }
+            
+            // Press the main key
+            if (mainKey != Keys.None)
+            {
+                InputHelper.SendInputPress(new HotkeyNodeValue(mainKey));
+            }
+            
+            // Release modifiers
+            if (hasControl)
+            {
+                Input.KeyUp(Keys.LControlKey);
+            }
+            if (hasShift)
+            {
+                Input.KeyUp(Keys.LShiftKey);
+            }
+            if (hasAlt)
+            {
+                Input.KeyUp(Keys.LMenu);
+            }
+            
             _sinceLastKeyPress.Restart();
         }
 
