@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Threading;
 using System.Windows.Forms;
 using ExileCore2;
 using ExileCore2.PoEMemory.Components;
+using ExileCore2.PoEMemory.MemoryObjects;
 using ExileCore2.Shared.Enums;
+using ExileCore2.Shared.Helpers;
 
 namespace ReAgent.State;
 
@@ -18,6 +21,8 @@ public class RuleState
     private readonly RuleInternalState _internalState;
     private readonly Lazy<List<EntityInfo>> _ingameiconObjects;
     private readonly Lazy<List<EntityInfo>> _miniMonoliths;
+    private readonly Lazy<List<EntityInfo>> _chests;
+    private readonly Lazy<List<EntityInfo>> _terrainEntities;
 
     private readonly Lazy<List<EntityInfo>> _effects;
     private readonly Lazy<List<MonsterInfo>> _allMonsters;
@@ -25,6 +30,8 @@ public class RuleState
     private readonly Lazy<List<MonsterInfo>> _allPlayers;
     private readonly Lazy<List<MonsterInfo>> _corpses;
     private readonly Lazy<List<EntityInfo>> _portals;
+    private readonly Lazy<StatDictionary> _mapStats;
+    private readonly GameController _controller;
 
     public RuleInternalState InternalState
     {
@@ -43,6 +50,7 @@ public class RuleState
     {
         _internalState = internalState;
         var controller = plugin.GameController;
+        _controller = controller;
         if (controller != null)
         {
             IsInHideout = plugin.GameController.Area.CurrentArea.IsHideout;
@@ -80,6 +88,8 @@ public class RuleState
                 AnimationStage = actorComponent.AnimationController?.CurrentAnimationStage ?? 0;
             }
 
+            _mapStats = new Lazy<StatDictionary>(() => new StatDictionary(controller.IngameState.Data.MapStats), LazyThreadSafetyMode.None);
+
             Buffs = new BuffDictionary(playerBuffs?.BuffsList ?? [], Skills);
 
             Flasks = new FlasksInfo(controller, InternalState);
@@ -89,6 +99,8 @@ public class RuleState
             _noneEntities = new Lazy<List<EntityInfo>>(() => controller.EntityListWrapper.ValidEntitiesByType[EntityType.None].Select(x => new EntityInfo(controller, x)).ToList(), LazyThreadSafetyMode.None);
             _ingameiconObjects = new Lazy<List<EntityInfo>>(() => controller.EntityListWrapper.ValidEntitiesByType[EntityType.IngameIcon].Select(x => new EntityInfo(controller, x)).ToList(), LazyThreadSafetyMode.None);
             _miniMonoliths = new Lazy<List<EntityInfo>>(() => controller.EntityListWrapper.ValidEntitiesByType[EntityType.MiniMonolith].Select(x => new EntityInfo(controller, x)).ToList(), LazyThreadSafetyMode.None);
+            _chests = new Lazy<List<EntityInfo>>(() => controller.EntityListWrapper.ValidEntitiesByType[EntityType.Chest].Select(x => new EntityInfo(controller, x)).ToList(), LazyThreadSafetyMode.None);
+            _terrainEntities = new Lazy<List<EntityInfo>>(() => controller.EntityListWrapper.ValidEntitiesByType[EntityType.Terrain].Select(x => new EntityInfo(controller, x)).ToList(), LazyThreadSafetyMode.None);
             _allMonsters = new Lazy<List<MonsterInfo>>(() => controller.EntityListWrapper.ValidEntitiesByType[EntityType.Monster]
                 .Where(e => NearbyMonsterInfo.IsValidMonster(plugin, e, false, false))
                     .Select(x => new MonsterInfo(controller, x)).ToList(), LazyThreadSafetyMode.None);
@@ -107,6 +119,9 @@ public class RuleState
         }
     }
 
+
+    [Api]
+    public StatDictionary MapStats => _mapStats.Value;
 
     [Api]
     public bool IsMoving { get; }
@@ -193,6 +208,12 @@ public class RuleState
     public IEnumerable<EntityInfo> MiniMonoliths => _miniMonoliths.Value;
 
     [Api]
+    public IEnumerable<EntityInfo> Chests => _chests.Value;
+
+    [Api]
+    public IEnumerable<EntityInfo> TerrainEntities => _terrainEntities.Value;
+
+    [Api]
     public IEnumerable<MonsterInfo> AllMonsters => _allMonsters.Value;
 
     [Api]
@@ -250,4 +271,7 @@ public class RuleState
 
     [Api]
     public bool IsAnyLargePanelOpen => _internalState.LargePanelVisible;
+
+    [Api]
+    public Vector2 MousePosition => _controller.IngameState.ServerData.WorldMousePosition.WorldToGrid();
 }
