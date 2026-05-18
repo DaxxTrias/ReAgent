@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Dynamic.Core;
@@ -29,6 +29,7 @@ public class Rule
     private static readonly Vector4 RuleFalseColor = new(255, 255, 0, 255);
     private static readonly Vector4 RulePendingColor = new(0, 255, 128, 255);
     private static readonly Vector4 ExceptionColor = new(255, 0, 0, 255);
+    private static readonly IList<ISideEffect> EmptyEffects = Array.Empty<ISideEffect>();
 
     private static readonly ParsingConfig ParsingConfig = new ParsingConfig()
         { AllowNewToEvaluateAnyType = true, ResolveTypesBySimpleName = true, CustomTypeProvider = new CustomDynamicLinqCustomTypeProvider() };
@@ -230,7 +231,7 @@ public class Rule
                         false,
                         RuleSource);
                     var boolFunc = expression.Compile();
-                    return (s => boolFunc(s) ? [new PressKeySideEffect(KeyV2 ?? throw new Exception("Key is not assigned"))] : [], null);
+                    return (s => boolFunc(s) ? SingleEffect(new PressKeySideEffect(KeyV2 ?? throw new Exception("Key is not assigned"))) : EmptyEffects, null);
                 }
                 case RuleActionType.SingleSideEffect:
                 {
@@ -239,7 +240,7 @@ public class Rule
                         false,
                         RuleSource);
                     var effectFunc = expression.Compile();
-                    return (s => effectFunc(s) switch { { } sideEffect => [sideEffect], _ => Enumerable.Empty<ISideEffect>() }, null);
+                    return (s => SingleEffect(effectFunc(s)), null);
                 }
                 case RuleActionType.MultipleSideEffects:
                 {
@@ -248,7 +249,7 @@ public class Rule
                         false,
                         RuleSource);
                     var effectFunc = expression.Compile();
-                    return (s => effectFunc(s) switch { { } sideEffects => sideEffects, _ => Enumerable.Empty<ISideEffect>() }, null);
+                    return (s => effectFunc(s) ?? Array.Empty<ISideEffect>(), null);
                 }
                 default:
                     throw new Exception($"Invalid condition type: {Type}");
@@ -273,19 +274,18 @@ public class Rule
                 {
                     var @delegate = DelegateCompiler.CompileDelegate<ScriptFunc<bool>>(RuleSource, ScriptOptions, CreateAlc());
                     return (s => @delegate(s)
-                        ? [new PressKeySideEffect(KeyV2 ?? throw new Exception("Key is not assigned"))]
-                        : [], null);
+                        ? SingleEffect(new PressKeySideEffect(KeyV2 ?? throw new Exception("Key is not assigned")))
+                        : EmptyEffects, null);
                 }
                 case RuleActionType.SingleSideEffect:
                 {
                     var @delegate = DelegateCompiler.CompileDelegate<ScriptFunc<ISideEffect>>(RuleSource, ScriptOptions, CreateAlc());
-                    return (s => @delegate(s) switch { { } sideEffect => [sideEffect], _ => Enumerable.Empty<ISideEffect>() },
-                        null);
+                    return (s => SingleEffect(@delegate(s)), null);
                 }
                 case RuleActionType.MultipleSideEffects:
                 {
                     var @delegate = DelegateCompiler.CompileDelegate<ScriptFunc<IEnumerable<ISideEffect>>>(RuleSource, ScriptOptions, CreateAlc());
-                    return (s => @delegate(s) switch { { } sideEffects => sideEffects, _ => Enumerable.Empty<ISideEffect>() }, null);
+                    return (s => @delegate(s) ?? Array.Empty<ISideEffect>(), null);
                 }
                 default:
                     throw new Exception($"Invalid condition type: {Type}");
@@ -306,7 +306,7 @@ public class Rule
 
     public IList<ISideEffect> Evaluate(RuleState state)
     {
-        if (state == null) return [];
+        if (state == null) return EmptyEffects;
         IList<ISideEffect> result = null;
         var (func, compilationException) = _compilationResult.Value;
         if (func != null)
@@ -321,7 +321,7 @@ public class Rule
                     {
                         try
                         {
-                            result = func(state).Where(x => x != null).ToList();
+                            result = MaterializeEffects(func(state));
                             _lastException = null;
                         }
                         finally
@@ -342,6 +342,51 @@ public class Rule
             _lastException = compilationException;
         }
 
-        return result ?? new List<ISideEffect>();
+        return result ?? EmptyEffects;
+    }
+
+    private static IList<ISideEffect> MaterializeEffects(IEnumerable<ISideEffect> effects)
+    {
+        if (effects == null)
+        {
+            return EmptyEffects;
+        }
+
+        if (effects is IList<ISideEffect> list)
+        {
+            for (var i = 0; i < list.Count; i++)
+            {
+                if (list[i] == null)
+                {
+                    return CopyNonNullEffects(list);
+                }
+            }
+
+            return list.Count == 0 ? EmptyEffects : list;
+        }
+
+        return CopyNonNullEffects(effects);
+    }
+
+    private static IList<ISideEffect> SingleEffect(ISideEffect effect)
+    {
+        return effect == null ? EmptyEffects : new[] { effect };
+    }
+
+    private static IList<ISideEffect> CopyNonNullEffects(IEnumerable<ISideEffect> effects)
+    {
+        List<ISideEffect>? result = null;
+        foreach (var effect in effects)
+        {
+            if (effect == null)
+            {
+                continue;
+            }
+
+            result ??= new List<ISideEffect>();
+            result.Add(effect);
+        }
+
+        return result ?? EmptyEffects;
     }
 }
