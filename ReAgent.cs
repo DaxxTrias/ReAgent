@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -27,10 +27,8 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
     private readonly RuleInternalState _internalState = new RuleInternalState();
     private readonly ConditionalWeakTable<Profile, string> _pendingNames = new ConditionalWeakTable<Profile, string>();
     private readonly HashSet<string> _loadedTextures = new();
-    private readonly Dictionary<string, Color> _colorCache = new(StringComparer.OrdinalIgnoreCase);
     private RuleState _state;
     private List<SideEffectContainer> _pendingSideEffects = new List<SideEffectContainer>();
-    private List<SideEffectContainer> _nextPendingSideEffects = new List<SideEffectContainer>();
     private string _profileToDelete = null;
     public Dictionary<string, List<string>> CustomAilments { get; set; } = new Dictionary<string, List<string>>();
     public static int ProcessID { get; private set; }
@@ -325,7 +323,17 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
         _internalState.KeysToRelease.Clear();
         _internalState.TextToDisplay.Clear();
         _internalState.GraphicToDisplay.Clear();
-        _internalState.ClearPluginBridgeMethodsQueue();
+        // Clear plugin-bridge queue if present (compat layer via reflection)
+        try
+        {
+            var bridgeProp = typeof(RuleInternalState).GetProperty("PluginBridgeMethodsToCall");
+            var queueObj = bridgeProp?.GetValue(_internalState);
+            queueObj?.GetType().GetMethod("Clear")?.Invoke(queueObj, null);
+        }
+        catch
+        {
+            // ignore
+        }
         _internalState.ProgressBarsToDisplay.Clear();
         _internalState.ChatTitlePanelVisible = GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible;
         _internalState.CanPressKey = _sinceLastKeyPress.ElapsedMilliseconds >= Settings.GlobalKeyPressCooldown && !_internalState.ChatTitlePanelVisible;
@@ -349,7 +357,8 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
 
         foreach (var group in profile.Groups)
         {
-            foreach (var sideEffect in group.Evaluate(_state))
+            var newSideEffects = group.Evaluate(_state).ToList();
+            foreach (var sideEffect in newSideEffects)
             {
                 sideEffect.SetPending();
                 _pendingSideEffects.Add(sideEffect);
@@ -360,33 +369,37 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
 
         try
         {
-            foreach (var (methodName, invoker) in _internalState.GetPluginBridgeMethodsToCall())
+            var bridgeProp = typeof(RuleInternalState).GetProperty("PluginBridgeMethodsToCall");
+            if (bridgeProp?.GetValue(_internalState) is System.Collections.IEnumerable queue)
             {
-                if (string.IsNullOrEmpty(methodName) || invoker == null)
+                foreach (var entry in queue)
                 {
-                    continue;
-                }
-
-                try
-                {
-                    if (GameController.PluginBridge.GetMethod<Delegate>(methodName) is { } method)
+                    var t = entry?.GetType();
+                    var methodName = t?.GetField("Item1")?.GetValue(entry) as string;
+                    var invoker = t?.GetField("Item2")?.GetValue(entry) as Action<Delegate>;
+                    if (string.IsNullOrEmpty(methodName) || invoker == null)
+                        continue;
+                    try
                     {
-                        invoker(method);
+                        if (GameController.PluginBridge.GetMethod<Delegate>(methodName) is { } method)
+                        {
+                            invoker(method);
+                        }
+                        else
+                        {
+                            LogError($"Plugin bridge method {methodName} was not found");
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        LogError($"Plugin bridge method {methodName} was not found");
+                        LogError($"Plugin bridge {methodName} call error: {ex}");
                     }
-                }
-                catch (Exception ex)
-                {
-                    LogError($"Plugin bridge {methodName} call error: {ex}");
                 }
             }
         }
         catch (Exception ex)
         {
-            LogError($"Plugin bridge dispatch error: {ex}");
+            LogError($"Plugin bridge reflection error: {ex}");
         }
 
         if (_internalState.KeyToPress is { } key)
@@ -491,15 +504,14 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
         foreach (var (text, position, size, fraction, color, backgroundColor, textColor) in _internalState.ProgressBarsToDisplay)
         {
             var textSize = Graphics.MeasureText(text);
-            Graphics.DrawBox(position, position + size, GetColor(backgroundColor));
-            Graphics.DrawBox(position, position + size with { X = size.X * fraction }, GetColor(color));
-            Graphics.DrawText(text, position + size / 2 - textSize / 2, GetColor(textColor));
+            Graphics.DrawBox(position, position + size, ColorFromName(backgroundColor));
+            Graphics.DrawBox(position, position + size with { X = size.X * fraction }, ColorFromName(color));
+            Graphics.DrawText(text, position + size / 2 - textSize / 2, ColorFromName(textColor));
         }
 
         foreach (var (graphicFilePath, position, size, tintColor) in _internalState.GraphicToDisplay)
         {
-            var textureLoaded = _loadedTextures.Contains(graphicFilePath);
-            if (!textureLoaded)
+            if (!_loadedTextures.Contains(graphicFilePath))
             {
                 var graphicFileFullPath = Path.Combine(Path.GetDirectoryName(typeof(Core).Assembly.Location)!, Settings.ImageDirectory, graphicFilePath);
                 if (File.Exists(graphicFileFullPath))
@@ -507,14 +519,13 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
                     if (Graphics.InitImage(graphicFilePath, graphicFileFullPath))
                     {
                         _loadedTextures.Add(graphicFilePath);
-                        textureLoaded = true;
                     }
                 }
             }
 
-            if (textureLoaded)
+            if (_loadedTextures.Contains(graphicFilePath))
             {
-                Graphics.DrawImage(graphicFilePath, new RectangleF(position.X, position.Y, size.X, size.Y), GetColor(tintColor));
+                Graphics.DrawImage(graphicFilePath, new RectangleF(position.X, position.Y, size.X, size.Y), ColorFromName(tintColor));
             }
         }
 
@@ -522,46 +533,29 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
         {
             var textSize = Graphics.MeasureText(text);
             Graphics.DrawBox(position, position + textSize, Color.Black);
-            Graphics.DrawText(text, position, GetColor(color));
+            Graphics.DrawText(text, position, ColorFromName(color));
         }
     }
 
-    private Color GetColor(string color)
+    private static Color ColorFromName(string color)
     {
-        if (!_colorCache.TryGetValue(color, out var value))
-        {
-            value = Color.FromName(color);
-            _colorCache[color] = value;
-        }
-
-        return value;
+        return Color.FromName(color);
     }
 
     private void ApplyPendingSideEffects()
     {
-        if (_pendingSideEffects.Count == 0)
+        var applicationResults = _pendingSideEffects.Select(x => (x, ApplicationResult: x.Apply(_state))).ToList();
+        foreach (var successfulApplication in applicationResults.Where(x =>
+                     x.ApplicationResult is SideEffectApplicationResult.AppliedUnique or SideEffectApplicationResult.AppliedDuplicate))
         {
-            return;
-        }
-
-        _nextPendingSideEffects.Clear();
-        foreach (var pendingSideEffect in _pendingSideEffects)
-        {
-            var applicationResult = pendingSideEffect.Apply(_state);
-            if (applicationResult == SideEffectApplicationResult.UnableToApply)
+            successfulApplication.x.SetExecuted(_state);
+            if (successfulApplication.ApplicationResult == SideEffectApplicationResult.AppliedUnique)
             {
-                _nextPendingSideEffects.Add(pendingSideEffect);
-                continue;
-            }
-
-            pendingSideEffect.SetExecuted(_state);
-            if (applicationResult == SideEffectApplicationResult.AppliedUnique)
-            {
-                _actionInfo.Enqueue((DateTime.Now, pendingSideEffect.SideEffect.ToString() ?? string.Empty));
+                _actionInfo.Enqueue((DateTime.Now, successfulApplication.x.SideEffect.ToString()));
             }
         }
 
-        (_pendingSideEffects, _nextPendingSideEffects) = (_nextPendingSideEffects, _pendingSideEffects);
+        _pendingSideEffects = applicationResults.Where(x => x.ApplicationResult == SideEffectApplicationResult.UnableToApply).Select(x => x.x).ToList();
     }
 
 
