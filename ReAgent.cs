@@ -348,7 +348,7 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
             GameController.InspectObject(_state, "ReAgent state");
         }
 
-        if (!shouldExecute && !Settings.InspectState)
+        if (!shouldExecute)
         {
             return;
         }
