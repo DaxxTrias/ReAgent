@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -51,6 +51,41 @@ public class BuffDictionary
     public bool Has(string id)
     {
         return _source.ContainsKey(id);
+    }
+
+    /// <summary>
+    /// Reads a <see cref="ushort"/> at <c>buff.Address + offset</c>.
+    /// Used for fields not yet mapped in GameOffsets (e.g. Chronomancer phase at 0x14C).
+    /// </summary>
+    [Api]
+    public ushort? ReadUInt16At(string buffId, int offset)
+    {
+        if (!_source.TryGetValue(buffId, out var buff) || buff.Address == 0)
+            return null;
+
+        try
+        {
+            return buff.M.Read<ushort>(buff.Address + offset);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Chronomancer Sands pendulum position from <c>chronomancer_cast_speed</c> at <paramref name="buffFieldOffset"/> (default 0x14C).
+    /// Game stores strength as 0..6000 (hundredths of a percent: 5800 = 58%). Returns 0 = max cast speed (left), 1 = max AoE (right).
+    /// </summary>
+    [Api]
+    public float? ChronomancerSandsPendulumT(int buffFieldOffset = 0x14C)
+    {
+        var raw = ReadUInt16At("chronomancer_cast_speed", buffFieldOffset);
+        if (raw == null)
+            return null;
+
+        var castPercent = raw.Value / 100f;
+        return Math.Clamp((60f - castPercent) / 59f, 0f, 1f);
     }
 
     public List<StatusEffect> AllBuffs => _allBuffs.Value;
