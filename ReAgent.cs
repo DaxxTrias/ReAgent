@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -335,6 +335,7 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
             // ignore
         }
         _internalState.ProgressBarsToDisplay.Clear();
+        _internalState.ChronomancerPendulumsToDisplay.Clear();
         _internalState.ChatTitlePanelVisible = GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible;
         _internalState.CanPressKey = _sinceLastKeyPress.ElapsedMilliseconds >= Settings.GlobalKeyPressCooldown && !_internalState.ChatTitlePanelVisible;
         _internalState.LeftPanelVisible = GameController.IngameState.IngameUi.OpenLeftPanel.IsVisible;
@@ -509,6 +510,25 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
             Graphics.DrawText(text, position + size / 2 - textSize / 2, ColorFromName(textColor));
         }
 
+        foreach (var (position, size, pendulumT, castPercent, aoePercent, drawLabels, trackColor, markerColor, castLabelColor, aoeLabelColor) in _internalState.ChronomancerPendulumsToDisplay)
+        {
+            Graphics.DrawBox(position, position + size, ColorFromName(trackColor));
+
+            var markerWidth = Math.Max(4f, size.Y * 0.35f);
+            var markerX = position.X + pendulumT * (size.X - markerWidth);
+            var markerPosition = new Vector2(markerX, position.Y);
+            Graphics.DrawBox(markerPosition, markerPosition + new Vector2(markerWidth, size.Y), ColorFromName(markerColor));
+
+            if (!drawLabels)
+                continue;
+
+            var labelY = position.Y + size.Y + 4f;
+            Graphics.DrawText($"{castPercent}%", new Vector2(position.X, labelY), ColorFromName(castLabelColor));
+            var aoeText = $"{aoePercent}%";
+            var aoeTextSize = Graphics.MeasureText(aoeText);
+            Graphics.DrawText(aoeText, new Vector2(position.X + size.X - aoeTextSize.X, labelY), ColorFromName(aoeLabelColor));
+        }
+
         foreach (var (graphicFilePath, position, size, tintColor) in _internalState.GraphicToDisplay)
         {
             if (!_loadedTextures.Contains(graphicFilePath))
@@ -539,7 +559,28 @@ public sealed class ReAgent : BaseSettingsPlugin<ReAgentSettings>
 
     private static Color ColorFromName(string color)
     {
-        return Color.FromName(color);
+        if (string.IsNullOrWhiteSpace(color))
+            return Color.White;
+
+        if (color[0] == '#')
+        {
+            var hex = color.AsSpan(1);
+            if (hex.Length is 6 or 8 && uint.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var value))
+            {
+                if (hex.Length == 6)
+                    return Color.FromArgb(255, (int)((value >> 16) & 0xFF), (int)((value >> 8) & 0xFF), (int)(value & 0xFF));
+
+                // #RRGGBBAA (alpha in low byte, matches existing ProgressBarSideEffect hex strings)
+                return Color.FromArgb(
+                    (int)(value & 0xFF),
+                    (int)((value >> 24) & 0xFF),
+                    (int)((value >> 16) & 0xFF),
+                    (int)((value >> 8) & 0xFF));
+            }
+        }
+
+        var named = Color.FromName(color);
+        return named.IsKnownColor || named.A > 0 ? named : Color.White;
     }
 
     private void ApplyPendingSideEffects()

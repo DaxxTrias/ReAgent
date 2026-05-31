@@ -80,12 +80,30 @@ public class BuffDictionary
     [Api]
     public float? ChronomancerSandsPendulumT(int buffFieldOffset = 0x14C)
     {
-        var raw = ReadUInt16At("chronomancer_cast_speed", buffFieldOffset);
-        if (raw == null)
+        return TryGetChronomancerSands(buffFieldOffset)?.PendulumT;
+    }
+
+    /// <summary>
+    /// Reads cast/AoE phase from buff memory at <paramref name="buffFieldOffset"/> (default 0x14C).
+    /// </summary>
+    [Api]
+    public (float PendulumT, int CastPercent, int AoePercent)? TryGetChronomancerSands(int buffFieldOffset = 0x14C)
+    {
+        if (!Has("chronomancer_cast_speed"))
             return null;
 
-        var castPercent = raw.Value / 100f;
-        return Math.Clamp((60f - castPercent) / 59f, 0f, 1f);
+        var castRaw = ReadUInt16At("chronomancer_cast_speed", buffFieldOffset);
+        if (castRaw == null)
+            return null;
+
+        var castPercent = (int)Math.Round(castRaw.Value / 100f);
+        var aoeRaw = ReadUInt16At("chronomancer_area_of_effect", buffFieldOffset);
+        var aoePercent = aoeRaw != null
+            ? (int)Math.Round(aoeRaw.Value / 100f)
+            : 61 - castPercent;
+
+        var pendulumT = Math.Clamp((60f - castPercent) / 59f, 0f, 1f);
+        return (pendulumT, castPercent, aoePercent);
     }
 
     public List<StatusEffect> AllBuffs => _allBuffs.Value;
