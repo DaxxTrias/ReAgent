@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Dynamic.Core;
@@ -167,6 +167,11 @@ public class Rule
                     new Vector2(ImGui.GetContentRegionAvail().X, ImGui.CalcTextSize($"^{RuleSource}_").Y + ImGui.GetTextLineHeight())))
             {
                 ResetFunction();
+            }
+
+            if (SyntaxVersion == 2)
+            {
+                ScriptSyntaxHighlighter.DrawPreview($"##ruleSourceSyntaxPreview{GetHashCode()}", RuleSource);
             }
         }
         else
