@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -58,6 +58,7 @@ public class RuleState
             IsInPeacefulArea = plugin.GameController.Area.CurrentArea.IsPeaceful;
             IsInEscapeMenu = plugin.GameController.Game.IsEscapeState;
             AreaName = plugin.GameController.Area.CurrentArea.Name;
+            TimeInGame = controller.IngameState.TimeInGameF;
 
             var player = controller.Player;
             if (player.TryGetComponent<Buffs>(out var playerBuffs))
@@ -173,6 +174,9 @@ public class RuleState
 
     [Api]
     public string AreaName { get; }
+
+    [Api]
+    public float TimeInGame { get; }
 
     [Api]
     public int MonsterCount(int range, MonsterRarity rarity) => _nearbyMonsterInfo.Value.GetMonsterCount(range, rarity);
