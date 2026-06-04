@@ -1,0 +1,34 @@
+---
+description: ReAgent rule script state, side effect, and lightweight tracker patterns
+alwaysApply: false
+---
+
+# ReAgent Script State Patterns
+
+Use this when writing or modifying ReAgent rule scripts. Relevant code: [Rule.cs](mdc:Rule.cs), [RuleState.cs](mdc:State/RuleState.cs), [VitalsInfo.cs](mdc:State/VitalsInfo.cs), [Vital.cs](mdc:State/Vital.cs), [RuleInternalState.cs](mdc:State/RuleInternalState.cs), [ProgressBarSideEffect.cs](mdc:SideEffects/ProgressBarSideEffect.cs).
+
+- Prefer **syntax version 2** scripts for multi-line logic. The script is compiled as a delegate shaped like `ScriptFunc<T>(RuleState State)`.
+- During rule evaluation, `State.InternalState` access is intentionally forbidden. Do not read or mutate it directly from scripts.
+- Persist script state through side effects and public API helpers: `SetNumberSideEffect`, `StartTimerSideEffect`, `State.GetNumberValue(...)`, `State.GetTimerValue(...)`, and `State.IsTimerRunning(...)`.
+- Side effects are applied after evaluation, so values set with `SetNumberSideEffect` are visible on the next evaluation, not later in the same script.
+- For overlay output, use `ProgressBarSideEffect(text, position, size, fraction, color, backgroundColor, textColor)` and return it from a `MultipleSideEffects` rule.
+- `State.Vitals` is built from the player `Life` component and exposes `HP`, `ES`, and `Mana`; each `Vital` has `Current`, `Max`, and `Percent`. `Max` uses the unreserved vital value.
+- For effective HP trackers, compute from exposed state instead of adding new memory reads, for example `HP.Current + ES.Current` plus optional `Mana.Current`.
+- For delayed-window trackers, store a small ring buffer in numbered state keys. Sample at a fixed cadence, record `time` and `value`, then choose the newest sample at or before the target offset.
+
+Example pattern:
+
+```csharp
+const string Prefix = "feature_state";
+const string Clock = Prefix + "_clock";
+
+var effects = new List<ISideEffect>();
+if (!State.IsTimerRunning(Clock))
+    effects.Add(new StartTimerSideEffect(Clock));
+
+var now = State.GetTimerValue(Clock);
+var current = (float)(State.Vitals.HP.Current + State.Vitals.ES.Current);
+effects.Add(new SetNumberSideEffect(Prefix + "_last_value", current));
+
+return effects;
+```
