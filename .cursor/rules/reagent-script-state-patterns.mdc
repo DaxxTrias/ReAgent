@@ -14,19 +14,15 @@ Use this when writing or modifying ReAgent rule scripts. Relevant code: [Rule.cs
 - For overlay output, use `ProgressBarSideEffect(text, position, size, fraction, color, backgroundColor, textColor)` and return it from a `MultipleSideEffects` rule.
 - `State.Vitals` is built from the player `Life` component and exposes `HP`, `ES`, and `Mana`; each `Vital` has `Current`, `Max`, and `Percent`. `Max` uses the unreserved vital value.
 - For effective HP trackers, compute from exposed state instead of adding new memory reads, for example `HP.Current + ES.Current` plus optional `Mana.Current`.
+- For pause-sensitive delayed-window trackers, prefer `State.TimeInGame` over `StartTimerSideEffect`/`State.GetTimerValue(...)`; it is sourced from ExileCore2 game-time and avoids aging samples while the game is paused.
 - For delayed-window trackers, store a small ring buffer in numbered state keys. Sample at a fixed cadence, record `time` and `value`, then choose the newest sample at or before the target offset.
 
 Example pattern:
 
 ```csharp
 const string Prefix = "feature_state";
-const string Clock = Prefix + "_clock";
-
 var effects = new List<ISideEffect>();
-if (!State.IsTimerRunning(Clock))
-    effects.Add(new StartTimerSideEffect(Clock));
-
-var now = State.GetTimerValue(Clock);
+var now = State.TimeInGame;
 var current = (float)(State.Vitals.HP.Current + State.Vitals.ES.Current);
 effects.Add(new SetNumberSideEffect(Prefix + "_last_value", current));
 
